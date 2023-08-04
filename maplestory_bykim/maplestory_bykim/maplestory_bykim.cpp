@@ -3,6 +3,9 @@
 
 #include "framework.h"
 #include "maplestory_bykim.h"
+#include <iostream>
+
+using namespace std;
 
 #define MAX_LOADSTRING 100
 
@@ -10,6 +13,16 @@
 HINSTANCE hInst;                                // 현재 인스턴스입니다.
 WCHAR szTitle[MAX_LOADSTRING];                  // 제목 표시줄 텍스트입니다.
 WCHAR szWindowClass[MAX_LOADSTRING];            // 기본 창 클래스 이름입니다.
+
+// >> : prototype Player 230804
+POINT playerPos = { 500,500 };
+void drawPlayer(HDC hdc, POINT player);
+void jumpPlayer(HWND hWnd);
+bool jump = false;
+bool isGrounded = true;
+POINT firstPlayer;
+#define timer_ID_1 1
+// << :
 
 // 이 코드 모듈에 포함된 함수의 선언을 전달합니다:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -31,6 +44,16 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_MAPLESTORYBYKIM, szWindowClass, MAX_LOADSTRING);
     MyRegisterClass(hInstance);
+
+#ifdef UNICODE
+
+#pragma comment(linker, "/entry:wWinMainCRTStartup /subsystem:console") 
+
+#else
+
+#pragma comment(linker, "/entry:WinMainCRTStartup /subsystem:console") 
+
+#endif
 
     // 애플리케이션 초기화를 수행합니다:
     if (!InitInstance (hInstance, nCmdShow))
@@ -123,8 +146,57 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    // >> : player 230804
+   
+    // << :
+
     switch (message)
     {
+
+    case WM_CREATE:
+        {
+            SetTimer(hWnd, 1, 80, NULL);
+        }
+        break;
+
+    case WM_KEYDOWN:
+        {
+            switch (wParam)
+            {
+            case VK_LEFT:
+                {
+                    playerPos.x -= 10;
+                }
+                break;
+
+            case VK_RIGHT:
+                {
+                playerPos.x += 10;
+                }
+                break;
+
+                //jump: 플레이어가 10에 도달할때 까지 2씩올라갔다가
+                //도달하면 땅에 도달할때까지 2씩 내려가기.
+
+            case VK_CONTROL:
+                {
+                    firstPlayer = playerPos;
+                    jump = true;
+                }
+                break;
+            }
+
+            InvalidateRect(hWnd, NULL, TRUE);
+
+        }
+        break;
+
+    case WM_TIMER:
+        {
+            jumpPlayer(hWnd);
+        }
+        break;
+
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
@@ -147,11 +219,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
             // TODO: 여기에 hdc를 사용하는 그리기 코드를 추가합니다...
+
+            // >> : player 230804
+            
+            drawPlayer(hdc, playerPos);
+            // << :
+
             EndPaint(hWnd, &ps);
         }
         break;
     case WM_DESTROY:
         PostQuitMessage(0);
+        KillTimer(hWnd, timer_ID_1);
         break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
@@ -178,3 +257,31 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     }
     return (INT_PTR)FALSE;
 }
+
+void drawPlayer(HDC hdc, POINT player)
+{
+    Rectangle(hdc, player.x - 30, player.y - 30, player.x + 30, player.y + 30);
+}
+
+void jumpPlayer(HWND hWnd)
+{
+    static int up = -1;
+
+    if (jump)
+    {
+        isGrounded = false;
+        playerPos.y += 10 * up;
+
+        if (playerPos.y <= firstPlayer.y - 100)
+            up *= -1;
+        if (playerPos.y >= firstPlayer.y)
+        {
+            up *= -1;
+            jump = false;
+        }
+            
+    }
+
+    InvalidateRect(hWnd, NULL, TRUE);
+}
+
